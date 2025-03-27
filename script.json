@@ -1,0 +1,347 @@
+/**
+ * Buddy Bot - Simple, reliable chatbot for mental well-being
+ * Static version for GitHub Pages
+ */
+
+// Generate a unique session ID for conversation tracking
+const sessionId = 'session_' + Math.random().toString(36).substr(2, 9);
+
+// User information
+let userName = null;
+
+// Initialize conversation memory
+const conversationHistory = {};
+conversationHistory[sessionId] = [];
+
+// Response categories
+const botResponses = {
+    "sad": [
+        "🫂 I'm sorry to hear you're feeling sad. Would you like to talk about what's causing these feelings?",
+        "💙 It's okay to feel sad sometimes. Would it help to share what's on your mind?",
+        "🌧️ I understand feeling down can be tough. Is there something specific that's bothering you?",
+        "🕯️ Sometimes small comfort activities can help when feeling sad. Do you have something that usually cheers you up?",
+        "🌈 I'm here for you. Feelings come and go, and things will get better with time."
+    ],
+    "mental_health": [
+        "💭 Mental health is so important. Have you been taking time for self-care lately?",
+        "🧠 Taking care of your mental health is just as important as physical health. How are you feeling today?",
+        "😌 Sometimes just talking about mental health can help. Is there anything specific on your mind?",
+        "🌱 Small steps can make a big difference for mental wellness. What's one small positive thing that happened today?",
+        "🤗 It's brave to talk about mental health. Is there something specific you'd like to discuss?"
+    ],
+    "social_media": [
+        "📱 Social media can be overwhelming sometimes. Have you considered taking occasional breaks?",
+        "👥 Social media shows only highlights of people's lives, not the full picture. How does it affect you?",
+        "🔔 Those notifications can be distracting! Have you tried adjusting your notification settings?",
+        "🌐 Finding balance with social media can be challenging. What works best for you?",
+        "💬 Online interactions are quite different from face-to-face ones. Do you notice any differences?"
+    ],
+    "well_being": [
+        "🧘 Overall well-being includes both mind and body. How do you find that balance?",
+        "💤 Good sleep is essential for well-being. Do you have a relaxing bedtime routine?",
+        "🏃 Physical activity can really boost your mood. Have you enjoyed any movement lately?",
+        "🥦 Nutrition plays a big role in how we feel. What are your favorite healthy foods?",
+        "🌿 Spending time in nature can be very beneficial. Do you have a favorite outdoor activity?"
+    ],
+    "greeting": [
+        "👋 Hello! I'm Buddy Bot. How are you doing today?",
+        "🌟 Hi there! It's nice to chat with you. How's your day going?",
+        "😊 Hey! I'm Buddy Bot, your friendly chat companion. What's on your mind?",
+        "👋 Hello! I'm here to chat about anything that's bothering you. How are you feeling?",
+        "🌈 Hi! I'm Buddy Bot. I'd love to hear how you're doing today!"
+    ],
+    "default": [
+        "I'd like to hear more about that. Could you tell me a bit more?",
+        "That's interesting. Would you like to share more details so I can better understand?",
+        "I want to make sure I understand correctly. Could you explain a bit more?",
+        "I'm here to listen. Would you like to elaborate on that?",
+        "I'm interested in learning more about that. Could you share additional thoughts?"
+    ]
+};
+
+// Add event listeners when the page is fully loaded
+window.addEventListener('DOMContentLoaded', function() {
+    // Set up send button click handler
+    const sendButton = document.getElementById('send-button');
+    if (sendButton) {
+        sendButton.addEventListener('click', function() {
+            handleSendMessage();
+        });
+    }
+    
+    // Set up enter key press handler
+    const messageInput = document.getElementById('message-input');
+    if (messageInput) {
+        messageInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                handleSendMessage();
+            }
+        });
+        
+        // Focus the input field
+        messageInput.focus();
+    }
+});
+
+/**
+ * Main function to handle sending messages
+ */
+function handleSendMessage() {
+    const messageInput = document.getElementById('message-input');
+    if (!messageInput) return;
+    
+    const message = messageInput.value.trim();
+    if (message === '') return;
+    
+    // Add user message to chat
+    addMessageToChat(message, 'user');
+    
+    // Clear input
+    messageInput.value = '';
+    
+    // Show typing indicator
+    showTypingIndicator();
+    
+    // Process message and respond after a short delay (for realism)
+    setTimeout(function() {
+        // Hide typing indicator
+        hideTypingIndicator();
+        
+        // Generate and display response
+        const response = generateResponse(message);
+        addMessageToChat(response, 'bot');
+        
+        // Scroll to bottom
+        scrollChatToBottom();
+    }, 1000);
+}
+
+/**
+ * Generate appropriate bot response based on user message
+ */
+function generateResponse(message) {
+    // Extract name if present
+    extractName(message);
+    
+    // Determine message topic
+    const topic = determineMessageTopic(message);
+    
+    // Get available responses for this topic
+    const responses = botResponses[topic] || botResponses.default;
+    
+    // Select random response
+    let response = responses[Math.floor(Math.random() * responses.length)];
+    
+    // Add user's name to response if available
+    if (userName && Math.random() > 0.5) {
+        if (response.includes('?')) {
+            response = response.replace('?', `, ${userName}?`);
+        }
+    }
+    
+    // Record interaction in history
+    conversationHistory[sessionId].push({
+        userMessage: message,
+        botResponse: response,
+        topic: topic,
+        timestamp: new Date().toISOString()
+    });
+    
+    return response;
+}
+
+/**
+ * Determine the topic of a message for contextual responses
+ */
+function determineMessageTopic(message) {
+    const text = message.toLowerCase();
+    
+    // Check if it's a follow-up to previous conversation
+    const history = conversationHistory[sessionId];
+    if (history.length > 0) {
+        const lastTopic = history[history.length - 1].topic;
+        
+        // If message is very short, it's likely a follow-up
+        if (message.split(' ').length < 3 && lastTopic !== 'greeting') {
+            return lastTopic;
+        }
+        
+        // If message contains references to previous conversation
+        if (text.includes('it') || text.includes('that') || text.includes('this')) {
+            return lastTopic;
+        }
+    }
+    
+    // Check for sadness expressions - highest priority
+    if (text.includes('sad') || 
+        text.includes('depress') || 
+        text.includes('unhappy') || 
+        text.includes('down') || 
+        text.includes('blue') || 
+        text.includes('miserable')) {
+        return 'sad';
+    }
+    
+    // Check for mental health topics
+    if (text.includes('mental') || 
+        text.includes('health') || 
+        text.includes('anxiety') || 
+        text.includes('stress') || 
+        text.includes('worry') || 
+        text.includes('therapy') || 
+        text.includes('counseling')) {
+        return 'mental_health';
+    }
+    
+    // Check for social media topics
+    if (text.includes('social') || 
+        text.includes('media') || 
+        text.includes('facebook') || 
+        text.includes('instagram') || 
+        text.includes('twitter') || 
+        text.includes('tiktok') || 
+        text.includes('online') || 
+        text.includes('internet') || 
+        text.includes('post') || 
+        text.includes('like') || 
+        text.includes('comment') || 
+        text.includes('share')) {
+        return 'social_media';
+    }
+    
+    // Check for well-being topics
+    if (text.includes('well') || 
+        text.includes('wellness') || 
+        text.includes('healthy') || 
+        text.includes('health') || 
+        text.includes('exercise') || 
+        text.includes('sleep') || 
+        text.includes('eating') || 
+        text.includes('food') || 
+        text.includes('nutrition') || 
+        text.includes('meditat') || 
+        text.includes('mindful')) {
+        return 'well_being';
+    }
+    
+    // Check for greetings
+    if (text.includes('hi') || 
+        text.includes('hello') || 
+        text.includes('hey') || 
+        text.includes('greetings') || 
+        text.includes('howdy') || 
+        text.includes('morning') || 
+        text.includes('afternoon') || 
+        text.includes('evening')) {
+        return 'greeting';
+    }
+    
+    return 'default';
+}
+
+/**
+ * Extract user's name from message
+ */
+function extractName(message) {
+    const namePatterns = [
+        /my name is (\w+)/i,
+        /i am (\w+)/i,
+        /i'm (\w+)/i,
+        /call me (\w+)/i
+    ];
+    
+    for (const pattern of namePatterns) {
+        const match = message.match(pattern);
+        if (match && match[1]) {
+            const potential = match[1];
+            
+            // Skip common words that aren't names
+            const commonWords = ['sad', 'happy', 'ok', 'okay', 'fine', 'good', 'bad'];
+            if (!commonWords.includes(potential.toLowerCase())) {
+                userName = potential.charAt(0).toUpperCase() + potential.slice(1).toLowerCase();
+                return;
+            }
+        }
+    }
+}
+
+/**
+ * Add a message to the chat display
+ */
+function addMessageToChat(message, sender) {
+    const chatMessages = document.getElementById('chat-messages');
+    if (!chatMessages) return;
+    
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${sender}`;
+    
+    const contentDiv = document.createElement('div');
+    contentDiv.className = 'message-content';
+    contentDiv.innerHTML = formatMessageText(message);
+    
+    messageDiv.appendChild(contentDiv);
+    chatMessages.appendChild(messageDiv);
+    
+    scrollChatToBottom();
+}
+
+/**
+ * Format message text with basic styling
+ */
+function formatMessageText(text) {
+    // Make URLs clickable
+    text = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+    
+    // Convert *text* to bold
+    text = text.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+    
+    // Convert _text_ to italic
+    text = text.replace(/_(.*?)_/g, '<em>$1</em>');
+    
+    return text;
+}
+
+/**
+ * Show typing indicator
+ */
+function showTypingIndicator() {
+    const chatMessages = document.getElementById('chat-messages');
+    if (!chatMessages) return;
+    
+    // Remove any existing indicator first
+    hideTypingIndicator();
+    
+    const indicator = document.createElement('div');
+    indicator.className = 'typing-indicator';
+    indicator.id = 'typing-indicator';
+    
+    // Add the three dots
+    for (let i = 0; i < 3; i++) {
+        const dot = document.createElement('span');
+        indicator.appendChild(dot);
+    }
+    
+    chatMessages.appendChild(indicator);
+    scrollChatToBottom();
+}
+
+/**
+ * Hide typing indicator
+ */
+function hideTypingIndicator() {
+    const indicator = document.getElementById('typing-indicator');
+    if (indicator) {
+        indicator.remove();
+    }
+}
+
+/**
+ * Scroll chat to the bottom
+ */
+function scrollChatToBottom() {
+    const chatMessages = document.getElementById('chat-messages');
+    if (chatMessages) {
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+}
